@@ -1,5 +1,5 @@
 {
-  "name": "permission-js",
+  "name": "web-permission",
   "version": "0.0.1",
   "description": "TypeScript library bridging the Web Permissions API to a unified check/request interface — Notification, Geolocation, Camera, Microphone, Clipboard, MIDI, DeviceOrientation, DeviceMotion, PersistentStorage.",
   "author": "Park Jungyoung <qkrwnss0509@gmail.com> (https://github.com/pjy0509)",
@@ -37,9 +37,9 @@
 
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pjy0509/permission-js.git"
+    "url": "git+https://github.com/pjy0509/web-permission.git"
   },
-  "homepage": "https://pjy0509.github.io/example/permission-js/",
+  "homepage": "https://pjy0509.github.io/example/web-permission/",
   "keywords": [
     "permission",
     "permissions-api",

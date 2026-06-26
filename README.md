@@ -1,4 +1,4 @@
-# permission-js
+# web-permission
 
 A tiny TypeScript library that bridges the Web Permissions API to a unified
 `check` / `request` / `subscribe` interface, with fallbacks for legacy
@@ -6,7 +6,7 @@ A tiny TypeScript library that bridges the Web Permissions API to a unified
 dispatch permission `change` events.
 
 ```bash
-npm install permission-js
+npm install web-permission
 ```
 
 ## API at a glance
@@ -32,7 +32,7 @@ npm install permission-js
 ## ESM
 
 ```js
-import Permission, { PermissionType, PermissionState } from 'permission-js'
+import Permission, { PermissionType, PermissionState } from 'web-permission'
 
 // Read the current state without prompting the user
 const state = await Permission.check(PermissionType.Camera)
@@ -55,7 +55,7 @@ await Permission.check(Permission.Type.Geolocation)
 The bundle is built with `exports: "named"`, so the singleton lives under `.default`:
 
 ```js
-const { default: Permission, PermissionType, PermissionState } = require('permission-js')
+const { default: Permission, PermissionType, PermissionState } = require('web-permission')
 
 Permission.check(PermissionType.Geolocation).then((state) => {
   if (state === PermissionState.Prompt) {
@@ -70,7 +70,7 @@ The global `Permission` is a namespace object. The singleton is `Permission.defa
 the enums are `Permission.PermissionType` / `Permission.PermissionState`.
 
 ```html
-<script src="https://unpkg.com/permission-js/dist/permission.umd.min.js"></script>
+<script src="https://unpkg.com/web-permission/dist/permission.umd.min.js"></script>
 <script>
   var perm = window.Permission.default
   var Type = window.Permission.PermissionType
@@ -98,7 +98,7 @@ import Permission, {
   PermissionType,
   PermissionState,
   type PermissionInstance,
-} from 'permission-js'
+} from 'web-permission'
 
 async function ensure(type: PermissionType): Promise<boolean> {
   const state: PermissionState = await Permission.check(type)
@@ -119,7 +119,7 @@ const granted = await ensure(PermissionType.Camera)
 changes. It returns an **unsubscribe** function — call it to tear everything down.
 
 ```js
-import Permission, { PermissionType } from 'permission-js'
+import Permission, { PermissionType } from 'web-permission'
 
 // Fires once immediately with the current state, then again on every change.
 const unsubscribe = Permission.subscribe(PermissionType.Camera, (state) => {
@@ -131,7 +131,7 @@ unsubscribe()
 ```
 
 In CommonJS / UMD the method lives on the singleton:
-`require('permission-js').default.subscribe(...)` /
+`require('web-permission').default.subscribe(...)` /
 `window.Permission.default.subscribe(...)`.
 
 ### How it stays in sync
