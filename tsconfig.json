@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "ESNext",
+    "lib": [
+      "es5",
+      "dom",
+
+      "es2015.core",
+      "es2015.proxy",
+      "es2015.reflect",
+      "es2015.promise",
+      "es2015.symbol",
+      "es2015.symbol.wellknown",
+    ],
+    "strict": true,
+    "removeComments": true,
+    "noImplicitAny": true,
+    "downlevelIteration": true,
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationDir": "dist",
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "index.ts",
+    "src/**/*.ts",
+  ]
+}
