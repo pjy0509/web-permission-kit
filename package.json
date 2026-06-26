@@ -29,7 +29,8 @@
   ],
 
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build"
   },
 
   "license": "MIT",
