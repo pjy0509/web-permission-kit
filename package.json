@@ -1,6 +1,6 @@
 {
   "name": "web-permission",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "TypeScript library bridging the Web Permissions API to a unified check/request interface — Notification, Geolocation, Camera, Microphone, Clipboard, MIDI, DeviceOrientation, DeviceMotion, PersistentStorage.",
   "author": "Park Jungyoung <qkrwnss0509@gmail.com> (https://github.com/pjy0509)",
   "type": "module",

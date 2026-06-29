@@ -7,23 +7,4 @@
 /dist
 /dist/*
 
-/document/native-fn-document/node_modules
-/document/native-fn-document/.pnp
-/document/native-fn-document.pnp.js
-/document/native-fn-document/coverage
-/document/native-fn-document/build
-/document/native-fn-document.DS_Store
-/document/native-fn-document.env.local
-/document/native-fn-document.env.development.local
-/document/native-fn-document.env.test.local
-/document/native-fn-document.env.production.local
-/document/native-fn-documentnpm-debug.log*
-/document/native-fn-documentyarn-debug.log*
-/document/native-fn-documentyarn-error.log*
-/document/native-fn-document/node_modules/
-/document/native-fn-document/node_modules/*
-/document/native-fn-document/node_modules/package-lock.json
-/document/native-fn-document/build/
-/document/native-fn-document/build/*
-
 web-permission.iml
