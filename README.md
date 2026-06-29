@@ -1,3 +1,7 @@
+![npm](https://img.shields.io/npm/v/web-permission)
+![bundle size](https://img.shields.io/bundlephobia/minzip/web-permission)
+![types](https://img.shields.io/npm/types/web-permission)
+
 # web-permission
 
 A tiny TypeScript library that bridges the Web Permissions API to a unified
