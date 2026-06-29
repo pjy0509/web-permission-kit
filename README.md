@@ -1,8 +1,8 @@
-![npm](https://img.shields.io/npm/v/web-permission)
-![bundle size](https://img.shields.io/bundlephobia/minzip/web-permission)
-![types](https://img.shields.io/npm/types/web-permission)
+![npm](https://img.shields.io/npm/v/web-permission-kit)
+![bundle size](https://img.shields.io/bundlephobia/minzip/web-permission-kit)
+![types](https://img.shields.io/npm/types/web-permission-kit)
 
-# web-permission
+# web-permission-kit
 
 A tiny TypeScript library that bridges the Web Permissions API to a unified
 `check` / `request` / `subscribe` interface, with fallbacks for legacy
@@ -10,20 +10,20 @@ A tiny TypeScript library that bridges the Web Permissions API to a unified
 dispatch permission `change` events.
 
 ```bash
-npm install web-permission
+npm install web-permission-kit
 ```
 
 ## API at a glance
 
-| Member | Signature | Description |
-| --- | --- | --- |
-| `Permission.supported` | `boolean` (getter) | Whether `navigator.permissions` (the Query API) exists |
-| `Permission.version` | `string` | The installed package version |
-| `Permission.check(type)` | `Promise<PermissionState>` | Reads the current state **without** prompting |
-| `Permission.request(type)` | `Promise<PermissionState>` | Requests the permission, prompting if needed |
-| `Permission.subscribe(type, cb)` | `() => void` | Observes state changes; returns an unsubscribe function |
-| `Permission.Type` | `PermissionType` | Enum of permission types (alias of the named export) |
-| `Permission.State` | `PermissionState` | Enum of states (alias of the named export) |
+| Member                           | Signature | Description |
+|----------------------------------| --- | --- |
+| `PermissionKit.supported`        | `boolean` (getter) | Whether `navigator.permissions` (the Query API) exists |
+| `PermissionKit.version`             | `string` | The installed package version |
+| `PermissionKit.check(type)`         | `Promise<PermissionState>` | Reads the current state **without** prompting |
+| `PermissionKit.request(type)`       | `Promise<PermissionState>` | Requests the permission, prompting if needed |
+| `PermissionKit.subscribe(type, cb)` | `() => void` | Observes state changes; returns an unsubscribe function |
+| `PermissionKit.Type`                | `PermissionType` | Enum of permission types (alias of the named export) |
+| `PermissionKit.State`               | `PermissionState` | Enum of states (alias of the named export) |
 
 `PermissionState` resolves to one of: `"grant"`, `"denied"`, `"prompt"`, `"unsupported"`.
 
@@ -36,22 +36,22 @@ npm install web-permission
 ## ESM
 
 ```js
-import Permission, { PermissionType, PermissionState } from 'web-permission'
+import PermissionKit, { PermissionType, PermissionState } from 'web-permission-kit'
 
 // Read the current state without prompting the user
-const state = await Permission.check(PermissionType.Camera)
+const state = await PermissionKit.check(PermissionType.Camera)
 console.log(state) // "grant" | "denied" | "prompt" | "unsupported"
 
 // Request the permission (prompts only when needed)
 if (state !== PermissionState.Grant) {
-  const result = await Permission.request(PermissionType.Microphone)
+  const result = await PermissionKit.request(PermissionType.Microphone)
   if (result === PermissionState.Grant) {
     // start capturing
   }
 }
 
 // The enums are also reachable off the singleton, so the named imports are optional
-await Permission.check(Permission.Type.Geolocation)
+await PermissionKit.check(PermissionKit.Type.Geolocation)
 ```
 
 ## CommonJS
@@ -59,59 +59,60 @@ await Permission.check(Permission.Type.Geolocation)
 The bundle is built with `exports: "named"`, so the singleton lives under `.default`:
 
 ```js
-const { default: Permission, PermissionType, PermissionState } = require('web-permission')
+const { default: PermissionKit, PermissionType, PermissionState } = require('web-permission-kit')
 
-Permission.check(PermissionType.Geolocation).then((state) => {
+PermissionKit.check(PermissionType.Geolocation).then((state) => {
   if (state === PermissionState.Prompt) {
-    return Permission.request(PermissionType.Geolocation)
+    return PermissionKit.request(PermissionType.Geolocation)
   }
 })
 ```
 
 ## UMD (browser `<script>`)
 
-The global `Permission` is a namespace object. The singleton is `Permission.default`;
-the enums are `Permission.PermissionType` / `Permission.PermissionState`.
+The global `PermissionKit` is a namespace object. The singleton is `PermissionKit.default`;
+the enums are `PermissionKit.PermissionType` / `PermissionKit.PermissionState`.
 
 ```html
-<script src="https://unpkg.com/web-permission/dist/permission.umd.min.js"></script>
+
+<script src="https://unpkg.com/web-permission-kit/dist/permission-kit.umd.min.js"></script>
 <script>
-  var perm = window.Permission.default
-  var Type = window.Permission.PermissionType
+    var perm = window.PermissionKit.default
+    var Type = window.PermissionKit.PermissionType
 
-  perm.check(Type.ClipboardRead).then(function (state) {
-    console.log(state)
-  })
-
-  // Device sensors must be requested from a user gesture (see Notes)
-  document.querySelector('#enable').addEventListener('click', function () {
-    perm.request(Type.DeviceOrientation).then(function (state) {
-      console.log(state)
+    perm.check(Type.ClipboardRead).then(function (state) {
+        console.log(state)
     })
-  })
+
+    // Device sensors must be requested from a user gesture (see Notes)
+    document.querySelector('#enable').addEventListener('click', function () {
+        perm.request(Type.DeviceOrientation).then(function (state) {
+            console.log(state)
+        })
+    })
 </script>
 ```
 
 ## TypeScript
 
 `PermissionType` and `PermissionState` are string enums (usable as both value and
-type). The instance shape is exported as `PermissionInstance`.
+type). The instance shape is exported as `PermissionKitInstance`.
 
 ```ts
-import Permission, {
+import PermissionKit, {
   PermissionType,
   PermissionState,
-  type PermissionInstance,
-} from 'web-permission'
+  type PermissionKitInstance,
+} from 'web-permission-kit'
 
 async function ensure(type: PermissionType): Promise<boolean> {
-  const state: PermissionState = await Permission.check(type)
+  const state: PermissionState = await PermissionKit.check(type)
 
   if (state === PermissionState.Grant) return true
   if (state === PermissionState.Denied || state === PermissionState.Unsupported) return false
 
   // state === Prompt → ask
-  return (await Permission.request(type)) === PermissionState.Grant
+  return (await PermissionKit.request(type)) === PermissionState.Grant
 }
 
 const granted = await ensure(PermissionType.Camera)
@@ -123,10 +124,10 @@ const granted = await ensure(PermissionType.Camera)
 changes. It returns an **unsubscribe** function — call it to tear everything down.
 
 ```js
-import Permission, { PermissionType } from 'web-permission'
+import PermissionKit, { PermissionType } from 'web-permission-kit'
 
 // Fires once immediately with the current state, then again on every change.
-const unsubscribe = Permission.subscribe(PermissionType.Camera, (state) => {
+const unsubscribe = PermissionKit.subscribe(PermissionType.Camera, (state) => {
   console.log('camera permission is now', state)
 })
 
@@ -135,8 +136,8 @@ unsubscribe()
 ```
 
 In CommonJS / UMD the method lives on the singleton:
-`require('web-permission').default.subscribe(...)` /
-`window.Permission.default.subscribe(...)`.
+`require('web-permission-kit').default.subscribe(...)` /
+`window.PermissionKit.default.subscribe(...)`.
 
 ### How it stays in sync
 

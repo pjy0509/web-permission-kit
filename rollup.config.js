@@ -5,9 +5,9 @@ import dts from 'rollup-plugin-dts'
 import path from 'path'
 
 const input = 'index.ts'
-const jsOutBase = 'dist/permission.'
+const jsOutBase = 'dist/permission-kit.'
 const dtsOutFile = 'dist/index.d.ts'
-const umdName = 'Permission'
+const umdName = 'PermissionKit'
 
 const formats = [
 	{ format: 'es', extension: 'mjs', minExtension: 'min.mjs' },

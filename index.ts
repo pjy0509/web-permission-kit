@@ -21,7 +21,7 @@ type FocusEventKey = 'focus' | 'blur' | 'visibilitychange';
 type PermissionSubscriber = (state: PermissionState) => void;
 type Unsubscribe = () => void;
 
-export interface PermissionInstance {
+export interface PermissionKitInstance {
     readonly Type: typeof PermissionType;
     readonly State: typeof PermissionState;
     readonly version: string;
@@ -224,7 +224,7 @@ function bindFocusRefresh(refresh: () => void): () => void {
     };
 }
 
-const Permission: PermissionInstance = {
+const PermissionKit: PermissionKitInstance = {
     Type: PermissionType,
     State: PermissionState,
     version: packageJSON.version,
@@ -233,8 +233,8 @@ const Permission: PermissionInstance = {
         return typeof PERMISSIONS !== 'undefined';
     },
 
-    request(this: PermissionInstance, type: PermissionType): Promise<PermissionState> {
-        const instance: PermissionInstance = this;
+    request(this: PermissionKitInstance, type: PermissionType): Promise<PermissionState> {
+        const instance: PermissionKitInstance = this;
 
         return new Promise(function (resolve: (status: PermissionState) => void, reject: (error: unknown) => void): void {
             function resolveAfterCheck(): void {
@@ -352,7 +352,7 @@ const Permission: PermissionInstance = {
         });
     },
 
-    check(this: PermissionInstance, type: PermissionType): Promise<PermissionState> {
+    check(this: PermissionKitInstance, type: PermissionType): Promise<PermissionState> {
         if (type === PermissionType.DeviceOrientation || type === PermissionType.DeviceMotion) {
             return new Promise<PermissionState>(function (resolve: (status: PermissionState) => void): void {
                 const sensorEventMap: SafariDeviceSensorEventMap | undefined = toSafariSensorEventMap(type);
@@ -400,8 +400,8 @@ const Permission: PermissionInstance = {
         });
     },
 
-    subscribe(this: PermissionInstance, type: PermissionType, callback: PermissionSubscriber): Unsubscribe {
-        const instance: PermissionInstance = this;
+    subscribe(this: PermissionKitInstance, type: PermissionType, callback: PermissionSubscriber): Unsubscribe {
+        const instance: PermissionKitInstance = this;
 
         if (typeof PERMISSIONS === 'undefined' || type === PermissionType.DeviceOrientation || type === PermissionType.DeviceMotion) {
             instance
@@ -465,4 +465,4 @@ const Permission: PermissionInstance = {
     }
 }
 
-export default Permission;
+export default PermissionKit;
