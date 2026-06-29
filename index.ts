@@ -1,4 +1,5 @@
 import packageJSON from "./package.json" assert {type: 'json'};
+import PlatformKit from 'web-platform-kit';
 
 declare global {
     interface Navigator {
@@ -146,20 +147,6 @@ function getFocusContext(): { window: Window, document: Document } {
     }
 }
 
-function getIOSMajor(): number | undefined {
-    if (typeof NAVIGATOR === 'undefined') return undefined;
-
-    const ua: string = NAVIGATOR.userAgent;
-
-    if (!/iP(?:hone|ad|od)/.test(ua)) return undefined;
-
-    const matched: RegExpExecArray | null = /OS (\d+)[._]\d+/.exec(ua);
-
-    if (matched === null) return undefined;
-
-    return parseInt(matched[1], 10);
-}
-
 function resolveFocusEventConfig(): FocusEventConfig {
     const context: { window: Window, document: Document } = getFocusContext();
     const top: Window = context.window;
@@ -168,23 +155,22 @@ function resolveFocusEventConfig(): FocusEventConfig {
     const target: Partial<Record<FocusEventKey, EventTarget>> = {};
 
     const isCordova: boolean = typeof (globalThis as { cordova?: unknown }).cordova !== 'undefined';
-    const iOSMajor: number | undefined = getIOSMajor();
-    const isIOSUnder8: boolean = typeof iOSMajor !== 'undefined' && iOSMajor < 8;
-    const isIOSOver8: boolean = typeof iOSMajor !== 'undefined' && iOSMajor >= 8;
 
     if (isCordova) {
         type.focus = 'resume';
         type.blur = 'pause';
         target.focus = topDocument;
         target.blur = topDocument;
-    } else if (isIOSUnder8) {
-        type.focus = 'pageshow';
-        type.blur = 'pagehide';
-        target.focus = top;
-        target.blur = top;
-    } else if (isIOSOver8) {
-        type.visibilitychange = 'visibilitychange';
-        target.visibilitychange = topDocument;
+    } else if (PlatformKit.os.name === 'ios') {
+        if (PlatformKit.compareVersion(PlatformKit.os.version, '8.0') >= 0) {
+            type.visibilitychange = 'visibilitychange';
+            target.visibilitychange = topDocument;
+        } else {
+            type.focus = 'pageshow';
+            type.blur = 'pagehide';
+            target.focus = top;
+            target.blur = top;
+        }
     } else {
         type.focus = 'focus';
         type.blur = 'blur';
