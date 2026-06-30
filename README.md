@@ -15,13 +15,13 @@ npm install web-permission-kit
 
 ## API at a glance
 
-| Member                           | Signature | Description |
-|----------------------------------| --- | --- |
-| `PermissionKit.supported`        | `boolean` (getter) | Whether `navigator.permissions` (the Query API) exists |
+| Member                              | Signature | Description |
+|-------------------------------------| --- | --- |
+| `PermissionKit.supported`           | `boolean` (getter) | Whether `navigator.permissions` (the Query API) exists |
 | `PermissionKit.version`             | `string` | The installed package version |
 | `PermissionKit.check(type)`         | `Promise<PermissionState>` | Reads the current state **without** prompting |
 | `PermissionKit.request(type)`       | `Promise<PermissionState>` | Requests the permission, prompting if needed |
-| `PermissionKit.subscribe(type, cb)` | `() => void` | Observes state changes; returns an unsubscribe function |
+| `PermissionKit.subscribe(type, cb)` | `() => void` | Observes state changes; returns an unsubscribe function. Sensors are not observable — see Notes |
 | `PermissionKit.Type`                | `PermissionType` | Enum of permission types (alias of the named export) |
 | `PermissionKit.State`               | `PermissionState` | Enum of states (alias of the named export) |
 
@@ -72,9 +72,9 @@ PermissionKit.check(PermissionType.Geolocation).then((state) => {
 
 The global `PermissionKit` is a namespace object. The singleton is `PermissionKit.default`;
 the enums are `PermissionKit.PermissionType` / `PermissionKit.PermissionState`.
+The bundle is self-contained — no other scripts are required.
 
 ```html
-
 <script src="https://unpkg.com/web-permission-kit/dist/permission-kit.umd.min.js"></script>
 <script>
     var perm = window.PermissionKit.default
