@@ -22,17 +22,91 @@ type FocusEventKey = 'focus' | 'blur' | 'visibilitychange';
 type PermissionSubscriber = (state: PermissionState) => void;
 type Unsubscribe = () => void;
 
+/**
+ * Unified access point for the Web Permissions API.
+ *
+ * Bridges permission `check` / `request` / `subscribe` into one interface, with
+ * fallbacks for legacy `getUserMedia`, iOS Safari sensor permissions, and browsers
+ * that do not reliably dispatch permission `change` events.
+ *
+ * @remarks
+ * `check` reflects stored state without prompting; `request` may prompt. Device
+ * sensors (`DeviceOrientation` / `DeviceMotion`) require a user gesture to request
+ * and cannot be observed via `subscribe`.
+ *
+ * @example
+ * ```ts
+ * const state = await PermissionKit.check(PermissionKit.Type.Camera);
+ * if (state === PermissionKit.State.Prompt) {
+ *   await PermissionKit.request(PermissionKit.Type.Camera);
+ * }
+ * ```
+ */
 export interface PermissionKitInstance {
+    /**
+     * Enum of permission types (alias of the named {@link PermissionType} export).
+     */
     readonly Type: typeof PermissionType;
+
+    /**
+     * Enum of permission states (alias of the named {@link PermissionState} export).
+     */
     readonly State: typeof PermissionState;
+
+    /**
+     * The installed package version.
+     */
     readonly version: string;
 
+    /**
+     * Whether the Permissions Query API (`navigator.permissions`) exists in this environment.
+     *
+     * @remarks
+     * When `false`, `check` resolves to `'unsupported'` for query-based types, though
+     * `request` may still work through its fallbacks (e.g. `getUserMedia`).
+     */
     get supported(): boolean;
 
+    /**
+     * Requests a permission, prompting the user when needed.
+     *
+     * @param type - The permission to request.
+     * @returns The resulting state after the attempt: `'grant'`, `'denied'`, `'prompt'`, or `'unsupported'`.
+     *
+     * @remarks
+     * Resolves immediately with `'grant'` when already granted. For device sensors on
+     * iOS Safari, must be called inside a user-gesture handler or the underlying
+     * `requestPermission()` rejects. `ClipboardWrite` is query-only — it returns the
+     * queried state rather than forcing a prompt.
+     */
     request(type: PermissionType): Promise<PermissionState>;
 
+    /**
+     * Reads the current permission state without prompting.
+     *
+     * @param type - The permission to inspect.
+     * @returns The current state: `'grant'`, `'denied'`, `'prompt'`, or `'unsupported'`.
+     *
+     * @remarks
+     * Safe to call on load to decide UI. For device sensors it probes gesture-free and
+     * never triggers a prompt.
+     */
     check(type: PermissionType): Promise<PermissionState>;
 
+    /**
+     * Observes permission state changes, invoking the callback once immediately and
+     * again on every change.
+     *
+     * @param type - The permission to watch.
+     * @param callback - Invoked with the current state on subscribe, then on each change. Repeated identical states are de-duplicated.
+     * @returns An unsubscribe function that tears down all listeners.
+     *
+     * @remarks
+     * Uses the native `PermissionStatus` `change` event where available, and also
+     * re-checks when the page regains focus (some browsers, notably Safari, do not
+     * fire `change` on settings edits). Sensors have no `PermissionStatus`, so
+     * `subscribe` fires once with the current state and returns a no-op unsubscribe.
+     */
     subscribe(type: PermissionType, callback: PermissionSubscriber): Unsubscribe;
 }
 
