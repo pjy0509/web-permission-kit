@@ -1,6 +1,6 @@
 {
   "name": "web-permission-kit",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "TypeScript library bridging the Web Permissions API to a unified check/request interface — Notification, Geolocation, Camera, Microphone, Clipboard, MIDI, DeviceOrientation, DeviceMotion, PersistentStorage.",
   "author": "Park Jungyoung <qkrwnss0509@gmail.com> (https://github.com/pjy0509)",
   "type": "module",
@@ -15,12 +15,15 @@
       "import": "./dist/permission-kit.mjs",
       "require": "./dist/permission-kit.cjs",
       "default": "./dist/permission-kit.mjs"
-    }
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist/**",
     "package.json",
     "README.md",
+    "README.ko.md",
     "LICENSE"
   ],
   "scripts": {
@@ -59,6 +62,6 @@
     "rollup-plugin-dts": "^6.2.3",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3",
-    "web-platform-kit": "^0.0.4"
+    "web-platform-kit": "^0.0.5"
   }
 }

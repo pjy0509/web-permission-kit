@@ -1,16 +1,32 @@
-import packageJSON from "./package.json" assert {type: 'json'};
+import packageJSON from "./package.json" with {type: 'json'};
 import PlatformKit from 'web-platform-kit';
 
-declare global {
-    interface Navigator {
-        getUserMedia?(constraints?: MediaStreamConstraints): Promise<MediaStream>;
+declare const global: unknown;
 
-        webkitGetUserMedia?(constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void): void;
+type LegacyUserMedia = (constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void) => void;
 
-        mozGetUserMedia?(constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void): void;
+interface NavigatorLike extends Partial<Navigator> {
+    getUserMedia?(constraints?: MediaStreamConstraints): Promise<MediaStream>;
 
-        msGetUserMedia?(constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void): void;
-    }
+    webkitGetUserMedia?: LegacyUserMedia;
+
+    mozGetUserMedia?: LegacyUserMedia;
+
+    msGetUserMedia?: LegacyUserMedia;
+}
+
+interface GlobalLike {
+    navigator?: NavigatorLike;
+    window?: Window;
+    document?: Document;
+    cordova?: unknown;
+    Notification?: typeof Notification;
+    DeviceOrientationEvent?: DeviceOrientationEventWithPermission;
+    DeviceMotionEvent?: DeviceMotionEventWithPermission;
+
+    addEventListener?(type: string, listener: () => void, options?: { once?: boolean }): void;
+
+    removeEventListener?(type: string, listener: () => void): void;
 }
 
 type SupportedPermissionState = 'denied' | 'granted' | 'prompt';
@@ -30,7 +46,7 @@ type Unsubscribe = () => void;
  * that do not reliably dispatch permission `change` events.
  *
  * @remarks
- * `check` reflects stored state without prompting; `request` may prompt. Device
+ * `check` reads the current state without prompting; `request` may prompt. Device
  * sensors (`DeviceOrientation` / `DeviceMotion`) require a user gesture to request
  * and cannot be observed via `subscribe`.
  *
@@ -74,10 +90,11 @@ export interface PermissionKitInstance {
      * @returns The resulting state after the attempt: `'grant'`, `'denied'`, `'prompt'`, or `'unsupported'`.
      *
      * @remarks
-     * Resolves immediately with `'grant'` when already granted. For device sensors on
-     * iOS Safari, must be called inside a user-gesture handler or the underlying
-     * `requestPermission()` rejects. `ClipboardWrite` is query-only — it returns the
-     * queried state rather than forcing a prompt.
+     * Resolves immediately with `'grant'` when already granted. Never rejects — a request
+     * that could not be made resolves to the best state available. For device sensors on
+     * iOS Safari, call this inside a user-gesture handler; outside one the underlying
+     * `requestPermission()` is refused and this resolves `'prompt'`. `ClipboardWrite` is
+     * query-only — it returns the queried state rather than forcing a prompt.
      */
     request(type: PermissionType): Promise<PermissionState>;
 
@@ -105,7 +122,8 @@ export interface PermissionKitInstance {
      * Uses the native `PermissionStatus` `change` event where available, and also
      * re-checks when the page regains focus (some browsers, notably Safari, do not
      * fire `change` on settings edits). Sensors have no `PermissionStatus`, so
-     * `subscribe` fires once with the current state and returns a no-op unsubscribe.
+     * `subscribe` fires once with the current state; unsubscribing before that first read
+     * suppresses the callback.
      */
     subscribe(type: PermissionType, callback: PermissionSubscriber): Unsubscribe;
 }
@@ -141,30 +159,47 @@ export enum PermissionState {
 }
 
 const FOCUS_REFRESH_DEBOUNCE: number = 200;
-const NAVIGATOR: Navigator | undefined = globalThis.navigator;
-const PERMISSIONS: Permissions | undefined = typeof NAVIGATOR !== 'undefined' ? NAVIGATOR.permissions : undefined;
-const NOTIFICATION: typeof Notification | undefined = globalThis.Notification;
-const GEOLOCATION: Geolocation | undefined = typeof NAVIGATOR !== 'undefined' ? NAVIGATOR.geolocation : undefined;
-const CLIPBOARD: Clipboard | undefined = typeof NAVIGATOR !== 'undefined' ? NAVIGATOR.clipboard : undefined;
-const STORAGE: StorageManager | undefined = typeof NAVIGATOR !== 'undefined' ? NAVIGATOR.storage : undefined;
+
+function getGlobal(): GlobalLike {
+    if (typeof globalThis !== 'undefined') return globalThis as GlobalLike;
+    if (typeof self !== 'undefined') return self as GlobalLike;
+    if (typeof window !== 'undefined') return window as GlobalLike;
+    if (typeof global !== 'undefined') return global as GlobalLike;
+
+    return {};
+}
+
+const GLOBAL: GlobalLike = getGlobal();
+
+const NAVIGATOR: NavigatorLike | undefined = GLOBAL.navigator;
+const PERMISSIONS: Permissions | undefined = typeof NAVIGATOR !== 'undefined' && NAVIGATOR !== null ? NAVIGATOR.permissions : undefined;
+const NOTIFICATION: typeof Notification | undefined = GLOBAL.Notification;
+const GEOLOCATION: Geolocation | undefined = typeof NAVIGATOR !== 'undefined' && NAVIGATOR !== null ? NAVIGATOR.geolocation : undefined;
+const CLIPBOARD: Clipboard | undefined = typeof NAVIGATOR !== 'undefined' && NAVIGATOR !== null ? NAVIGATOR.clipboard : undefined;
+const STORAGE: StorageManager | undefined = typeof NAVIGATOR !== 'undefined' && NAVIGATOR !== null ? NAVIGATOR.storage : undefined;
 
 const getUserMedia: ((constraints?: MediaStreamConstraints) => Promise<MediaStream>) | undefined = (function (): ((constraints?: MediaStreamConstraints) => Promise<MediaStream>) | undefined {
+    if (typeof NAVIGATOR === 'undefined' || NAVIGATOR === null) return undefined;
     if (typeof NAVIGATOR.mediaDevices !== 'undefined' && typeof NAVIGATOR.mediaDevices.getUserMedia !== 'undefined') return NAVIGATOR.mediaDevices.getUserMedia.bind(NAVIGATOR.mediaDevices);
 
-    const legacy: ((constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void) => void) | undefined = (function (): ((constraints: MediaStreamConstraints, successCallback: (stream: MediaStream) => void, errorCallback: (error: DOMException) => void) => void) | undefined {
-        if (typeof NAVIGATOR.getUserMedia !== 'undefined') return NAVIGATOR.getUserMedia;
+    const legacy: LegacyUserMedia | undefined = (function (): LegacyUserMedia | undefined {
+        if (typeof NAVIGATOR.getUserMedia !== 'undefined') return NAVIGATOR.getUserMedia as unknown as LegacyUserMedia;
         if (typeof NAVIGATOR.webkitGetUserMedia !== 'undefined') return NAVIGATOR.webkitGetUserMedia;
         if (typeof NAVIGATOR.mozGetUserMedia !== 'undefined') return NAVIGATOR.mozGetUserMedia;
         if (typeof NAVIGATOR.msGetUserMedia !== 'undefined') return NAVIGATOR.msGetUserMedia;
+
+        return undefined;
     })();
 
     if (typeof legacy !== 'undefined') {
-        return function legacyUserMedia(constraints: MediaStreamConstraints = {}) {
-            return new Promise((resolve: (stream: MediaStream) => void, reject: (error: DOMException) => void) => {
+        return function legacyUserMedia(constraints: MediaStreamConstraints = {}): Promise<MediaStream> {
+            return new Promise(function (resolve: (stream: MediaStream) => void, reject: (error: DOMException) => void): void {
                 legacy.call(NAVIGATOR, constraints, resolve, reject);
             });
-        }
+        };
     }
+
+    return undefined;
 })();
 
 function toPermissionState(permission: SupportedPermissionState | NotificationPermission): PermissionState {
@@ -185,12 +220,12 @@ function toSafariSensorEventMap(type: PermissionType): SafariDeviceSensorEventMa
     switch (type) {
         case PermissionType.DeviceOrientation:
             return {
-                event: globalThis.DeviceOrientationEvent as DeviceOrientationEventWithPermission,
+                event: GLOBAL.DeviceOrientationEvent as DeviceOrientationEventWithPermission,
                 type: 'deviceorientation',
             }
         case PermissionType.DeviceMotion:
             return {
-                event: globalThis.DeviceMotionEvent as DeviceMotionEventWithPermission,
+                event: GLOBAL.DeviceMotionEvent as DeviceMotionEventWithPermission,
                 type: 'devicemotion',
             }
         default:
@@ -199,19 +234,14 @@ function toSafariSensorEventMap(type: PermissionType): SafariDeviceSensorEventMa
 }
 
 function toDescriptor(type: PermissionType): PermissionDescriptor {
-    switch (type) {
-        case PermissionType.MIDI:
-            return {name: type as PermissionName, sysex: true} as PermissionDescriptor;
-        default:
-            return {name: type as PermissionName};
-    }
+    return {name: type as PermissionName};
 }
 
 function getFocusContext(): { window: Window, document: Document } {
-    const local: { window: Window, document: Document } = {window: globalThis.window, document: globalThis.document};
+    const local: { window: Window, document: Document } = {window: GLOBAL.window as Window, document: GLOBAL.document as Document};
 
     try {
-        const top: Window | null = globalThis.window.top;
+        const top: Window | null = (GLOBAL.window as Window).top;
 
         if (top === null) return local;
 
@@ -228,7 +258,7 @@ function resolveFocusEventConfig(): FocusEventConfig {
     const type: Partial<Record<FocusEventKey, string>> = {};
     const target: Partial<Record<FocusEventKey, EventTarget>> = {};
 
-    const isCordova: boolean = typeof (globalThis as { cordova?: unknown }).cordova !== 'undefined';
+    const isCordova: boolean = typeof GLOBAL.cordova !== 'undefined';
 
     if (isCordova) {
         type.focus = 'resume';
@@ -312,17 +342,34 @@ const PermissionKit: PermissionKitInstance = {
                         case PermissionType.Notification:
                             if (typeof NOTIFICATION === 'undefined') return resolve(PermissionState.Unsupported);
 
+                            let settled: boolean = false;
+
                             const result: Promise<NotificationPermission> | undefined = NOTIFICATION
                                 .requestPermission(
                                     function (permission: NotificationPermission): void {
+                                        if (settled) return;
+
+                                        settled = true;
+
                                         resolve(toPermissionState(permission));
                                     }
                                 );
 
-                            if (Object.prototype.toString.call(result) === '[object Promise]') {
+                            if (typeof result !== 'undefined' && result !== null && typeof result.then === 'function') {
                                 result
                                     .then(function (permission: NotificationPermission): void {
+                                        if (settled) return;
+
+                                        settled = true;
+
                                         resolve(toPermissionState(permission));
+                                    })
+                                    .catch(function (): void {
+                                        if (settled) return;
+
+                                        settled = true;
+
+                                        resolve(PermissionState.Unsupported);
                                     });
                             }
 
@@ -368,10 +415,10 @@ const PermissionKit: PermissionKitInstance = {
 
                             break;
                         case PermissionType.MIDI:
-                            if (typeof NAVIGATOR.requestMIDIAccess === 'undefined') return resolve(PermissionState.Unsupported);
+                            if (typeof NAVIGATOR === 'undefined' || NAVIGATOR === null || typeof NAVIGATOR.requestMIDIAccess !== 'function') return resolve(PermissionState.Unsupported);
 
                             NAVIGATOR
-                                .requestMIDIAccess({sysex: true})
+                                .requestMIDIAccess()
                                 .then(resolveAfterCheck)
                                 .catch(resolveAfterCheck);
 
@@ -399,9 +446,11 @@ const PermissionKit: PermissionKitInstance = {
                                     .then(function (permission: SupportedPermissionState): void {
                                         resolve(toPermissionState(permission));
                                     })
-                                    .catch(reject);
-                            } catch (e: unknown) {
-                                return reject(e);
+                                    .catch(function (): void {
+                                        resolve(PermissionState.Prompt);
+                                    });
+                            } catch (_: unknown) {
+                                return resolve(PermissionState.Prompt);
                             }
 
                             break;
@@ -420,16 +469,18 @@ const PermissionKit: PermissionKitInstance = {
                 if (typeof sensorEventMap === 'undefined' || typeof sensorEventMap.event === 'undefined') return resolve(PermissionState.Unsupported);
                 if (typeof sensorEventMap.event.requestPermission !== 'function') return resolve(PermissionState.Grant);
 
+                if (typeof GLOBAL.addEventListener !== 'function') return resolve(PermissionState.Prompt);
+
                 let granted: boolean = false;
 
                 function listener(): void {
                     granted = true;
                 }
 
-                globalThis.addEventListener(sensorEventMap.type, listener, {once: true});
+                GLOBAL.addEventListener(sensorEventMap.type, listener, {once: true});
 
-                globalThis.setTimeout(function (): void {
-                    globalThis.removeEventListener(sensorEventMap.type, listener);
+                setTimeout(function (): void {
+                    if (typeof GLOBAL.removeEventListener === 'function') GLOBAL.removeEventListener(sensorEventMap.type, listener);
 
                     if (granted) return resolve(PermissionState.Grant);
 
@@ -439,7 +490,7 @@ const PermissionKit: PermissionKitInstance = {
                         .then(function (permission: SupportedPermissionState): void {
                             resolve(toPermissionState(permission));
                         })
-                        .catch(function () {
+                        .catch(function (): void {
                             resolve(PermissionState.Prompt);
                         });
                 }, 50);
@@ -447,7 +498,22 @@ const PermissionKit: PermissionKitInstance = {
         }
 
         return new Promise(function (resolve: (status: PermissionState) => void): void {
-            if (typeof PERMISSIONS === 'undefined') return resolve(PermissionState.Unsupported);
+            if (typeof PERMISSIONS === 'undefined') {
+                if (type === PermissionType.PersistentStorage && typeof STORAGE !== 'undefined' && typeof STORAGE.persisted === 'function') {
+                    STORAGE
+                        .persisted()
+                        .then(function (persisted: boolean): void {
+                            resolve(persisted ? PermissionState.Grant : PermissionState.Prompt);
+                        })
+                        .catch(function (): void {
+                            resolve(PermissionState.Unsupported);
+                        });
+
+                    return;
+                }
+
+                return resolve(PermissionState.Unsupported);
+            }
 
             PERMISSIONS
                 .query(toDescriptor(type))
@@ -464,18 +530,23 @@ const PermissionKit: PermissionKitInstance = {
         const instance: PermissionKitInstance = this;
 
         if (typeof PERMISSIONS === 'undefined' || type === PermissionType.DeviceOrientation || type === PermissionType.DeviceMotion) {
+            let subscribed: boolean = true;
+
             instance
                 .check(type)
-                .then(callback);
+                .then(function (state: PermissionState): void {
+                    if (subscribed) callback(state);
+                });
 
             return function (): void {
+                subscribed = false;
             };
         }
 
         let active: boolean = true;
         let last: PermissionState | undefined = undefined;
         let status: PermissionStatus | undefined = undefined;
-        let timer: ReturnType<typeof globalThis.setTimeout> | undefined = undefined;
+        let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 
         function emit(state: PermissionState): void {
             if (!active || state === last) return;
@@ -490,9 +561,9 @@ const PermissionKit: PermissionKitInstance = {
 
         function refresh(): void {
             if (!active) return;
-            if (typeof timer !== 'undefined') globalThis.clearTimeout(timer);
+            if (typeof timer !== 'undefined') clearTimeout(timer);
 
-            timer = globalThis.setTimeout(function (): void {
+            timer = setTimeout(function (): void {
                 timer = undefined;
 
                 if (active) instance.check(type).then(emit);
@@ -517,7 +588,7 @@ const PermissionKit: PermissionKitInstance = {
         return function unsubscribe(): void {
             active = false;
 
-            if (typeof timer !== 'undefined') globalThis.clearTimeout(timer);
+            if (typeof timer !== 'undefined') clearTimeout(timer);
             if (typeof status !== 'undefined') status.removeEventListener('change', onStatusChange);
 
             unbindFocus();

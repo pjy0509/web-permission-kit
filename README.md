@@ -2,6 +2,8 @@
 ![bundle size](https://img.shields.io/bundlephobia/minzip/web-permission-kit)
 ![types](https://img.shields.io/npm/types/web-permission-kit)
 
+*English · [한국어](./README.ko.md)*
+
 # web-permission-kit
 
 A tiny TypeScript library that bridges the Web Permissions API to a unified
@@ -15,6 +17,8 @@ npm install web-permission-kit
 
 ## API at a glance
 
+`PermissionKit` is a singleton.
+
 | Member                              | Signature | Description |
 |-------------------------------------| --- | --- |
 | `PermissionKit.supported`           | `boolean` (getter) | Whether `navigator.permissions` (the Query API) exists |
@@ -22,14 +26,18 @@ npm install web-permission-kit
 | `PermissionKit.check(type)`         | `Promise<PermissionState>` | Reads the current state **without** prompting |
 | `PermissionKit.request(type)`       | `Promise<PermissionState>` | Requests the permission, prompting if needed |
 | `PermissionKit.subscribe(type, cb)` | `() => void` | Observes state changes; returns an unsubscribe function. Sensors are not observable — see Notes |
-| `PermissionKit.Type`                | `PermissionType` | Enum of permission types (alias of the named export) |
-| `PermissionKit.State`               | `PermissionState` | Enum of states (alias of the named export) |
+| `PermissionKit.Type`                | `typeof PermissionType` | The enum object itself (alias of the named export) |
+| `PermissionKit.State`               | `typeof PermissionState` | The enum object itself (alias of the named export) |
 
 `PermissionState` resolves to one of: `"grant"`, `"denied"`, `"prompt"`, `"unsupported"`.
 
 `PermissionType` members: `Notification`, `Geolocation`, `Camera`, `Microphone`,
 `ClipboardRead`, `ClipboardWrite`, `MIDI`, `DeviceOrientation`, `DeviceMotion`,
 `PersistentStorage`.
+
+> **Nothing throws — failure is a state.** `check` and `request` always resolve, for every
+> type, including the device sensors. A missing API resolves to `"unsupported"`; a request
+> that could not be made resolves to the best answer available rather than rejecting.
 
 ---
 
@@ -150,21 +158,40 @@ In CommonJS / UMD the method lives on the singleton:
   `resume` and legacy iOS `pageshow` variants handled. Focus bursts are debounced,
   so a return to the tab triggers at most one re-check.
 - **Sensors can't be observed.** `DeviceOrientation` / `DeviceMotion` have no
-  `PermissionStatus`, so `subscribe` fires once with the current state and returns
-  a no-op unsubscribe.
+  `PermissionStatus`, so `subscribe` fires once with the current state. Unsubscribing
+  before that first read still suppresses the callback.
 
 ---
 
 ## Notes
 
-- **`check` never prompts; `request` may.** `check` reflects the stored state, so
-  call it on load to decide your UI; call `request` from the action that needs access.
-- **Device sensors need a user gesture.** On iOS Safari, `request(DeviceOrientation)`
-  and `request(DeviceMotion)` must be triggered inside a click/tap handler, otherwise
-  the underlying `requestPermission()` rejects.
+- **`check` never prompts; `request` may.** `check` asks the browser for the current
+  permission state on every call. Use it on load to decide your UI; call `request` from
+  the action that needs access.
+- **Device sensors need a user gesture.** On iOS Safari the underlying
+  `requestPermission()` only prompts from inside a click/tap handler. Call
+  `request(DeviceOrientation)` / `request(DeviceMotion)` from one; outside a gesture it
+  resolves `"prompt"` without asking.
+- **`check` on sensors never prompts — by design.** iOS exposes no read-only query for
+  them, so `check` first listens briefly for a sensor event (a granted sensor emits
+  continuously, which proves access without asking) and only then falls through to
+  `requestPermission()`. Outside a gesture that call is refused by the browser, which is
+  exactly what keeps the dialog away. The trade-off is a ~50 ms delay per call.
+- **Outside a gesture, a denied sensor reads as `"prompt"`.** The browser's refusal and a
+  real denial arrive as the same rejection, and there is no read-only query to break the
+  tie, so the two cannot be distinguished. Call `request` from a gesture to get the real
+  answer. Nothing is cached — a permission the user flips in Settings takes effect on the
+  next read.
+- **MIDI is queried without `sysex`.** System-exclusive access is a separate, more alarming
+  prompt, and asking for it would report `prompt` to a user who has already granted plain
+  MIDI. If you need sysex, request it through `requestMIDIAccess({ sysex: true })` yourself.
 - **`ClipboardWrite` is query-only.** Write access can't be prompted without clobbering
   the clipboard, so `request(ClipboardWrite)` returns the queried state rather than
   forcing a prompt. The actual `clipboard.write()` may still succeed inside a gesture
   even when `check` reports `prompt`/`unsupported`.
 - **`.default` in CJS/UMD** is a consequence of keeping both a default and named
   exports. To drop it, switch the entry to fully-named exports and rebuild.
+
+## Browser support
+
+Runs down to **IE 9**.
