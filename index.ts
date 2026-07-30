@@ -35,8 +35,8 @@ type RequestPermission = () => Promise<SupportedPermissionState>;
 type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & { requestPermission?: RequestPermission };
 type DeviceMotionEventWithPermission = typeof DeviceMotionEvent & { requestPermission?: RequestPermission };
 type FocusEventKey = 'focus' | 'blur' | 'visibilitychange';
-type PermissionSubscriber = (state: PermissionState) => void;
-type Unsubscribe = () => void;
+export declare type PermissionSubscriber = (state: PermissionState) => void;
+export declare type PermissionUnsubscribe = () => void;
 
 /**
  * Unified access point for the Web Permissions API.
@@ -125,7 +125,7 @@ export interface PermissionKitInstance {
      * `subscribe` fires once with the current state; unsubscribing before that first read
      * suppresses the callback.
      */
-    subscribe(type: PermissionType, callback: PermissionSubscriber): Unsubscribe;
+    subscribe(type: PermissionType, callback: PermissionSubscriber): PermissionUnsubscribe;
 }
 
 interface SafariDeviceSensorEventMap {
@@ -326,7 +326,7 @@ const PermissionKit: PermissionKitInstance = {
     request(this: PermissionKitInstance, type: PermissionType): Promise<PermissionState> {
         const instance: PermissionKitInstance = this;
 
-        return new Promise(function (resolve: (status: PermissionState) => void, reject: (error: unknown) => void): void {
+        return new Promise(function (resolve: (status: PermissionState) => void): void {
             function resolveAfterCheck(): void {
                 instance
                     .check(type)
@@ -526,7 +526,7 @@ const PermissionKit: PermissionKitInstance = {
         });
     },
 
-    subscribe(this: PermissionKitInstance, type: PermissionType, callback: PermissionSubscriber): Unsubscribe {
+    subscribe(this: PermissionKitInstance, type: PermissionType, callback: PermissionSubscriber): PermissionUnsubscribe {
         const instance: PermissionKitInstance = this;
 
         if (typeof PERMISSIONS === 'undefined' || type === PermissionType.DeviceOrientation || type === PermissionType.DeviceMotion) {

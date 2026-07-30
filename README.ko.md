@@ -103,7 +103,8 @@ PermissionKit.check(PermissionType.Geolocation).then((state) => {
 ## TypeScript
 
 `PermissionType`과 `PermissionState`는 문자열 열거형이라 값으로도 타입으로도 쓸 수 있습니다.
-인스턴스의 형태는 `PermissionKitInstance`로 export됩니다.
+인스턴스의 형태는 `PermissionKitInstance`로, `subscribe`의 콜백과 반환 타입은
+`PermissionSubscriber` / `PermissionUnsubscribe`로 export됩니다.
 
 ```ts
 import PermissionKit, {
@@ -140,6 +141,19 @@ const unsubscribe = PermissionKit.subscribe(PermissionType.Camera, (state) => {
 
 // 관찰 중단
 unsubscribe()
+```
+
+`subscribe`의 양쪽에 이름이 있으므로 콜백을 따로 빼서 쓸 수 있습니다.
+
+```ts
+import PermissionKit, {
+  PermissionType,
+  type PermissionSubscriber,
+  type PermissionUnsubscribe,
+} from 'web-permission-kit'
+
+const onCameraChange: PermissionSubscriber = (state) => render(state)
+const off: PermissionUnsubscribe = PermissionKit.subscribe(PermissionType.Camera, onCameraChange)
 ```
 
 CommonJS / UMD에서는 싱글톤에 메서드가 있습니다:

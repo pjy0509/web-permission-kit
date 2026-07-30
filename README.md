@@ -103,8 +103,9 @@ The bundle is self-contained — no other scripts are required.
 
 ## TypeScript
 
-`PermissionType` and `PermissionState` are string enums (usable as both value and
-type). The instance shape is exported as `PermissionKitInstance`.
+`PermissionType` and `PermissionState` are string enums (usable as both value and type).
+The instance shape is exported as `PermissionKitInstance`, and `subscribe`'s callback and
+return types as `PermissionSubscriber` and `PermissionUnsubscribe`.
 
 ```ts
 import PermissionKit, {
@@ -141,6 +142,19 @@ const unsubscribe = PermissionKit.subscribe(PermissionType.Camera, (state) => {
 
 // Stop listening
 unsubscribe()
+```
+
+Both sides of `subscribe` have a named type, so the callback can live on its own:
+
+```ts
+import PermissionKit, {
+  PermissionType,
+  type PermissionSubscriber,
+  type PermissionUnsubscribe,
+} from 'web-permission-kit'
+
+const onCameraChange: PermissionSubscriber = (state) => render(state)
+const off: PermissionUnsubscribe = PermissionKit.subscribe(PermissionType.Camera, onCameraChange)
 ```
 
 In CommonJS / UMD the method lives on the singleton:
